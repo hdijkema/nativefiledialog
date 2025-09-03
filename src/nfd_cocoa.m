@@ -4,6 +4,8 @@
   http://www.frogtoss.com/labs
  */
 
+#ifdef _MAC_OS
+
 #include <AppKit/AppKit.h>
 #include "nfd.h"
 #include "nfd_common.h"
@@ -284,3 +286,5 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
     [keyWindow makeKeyAndOrderFront:nil];
     return nfdResult;
 }
+
+#endif

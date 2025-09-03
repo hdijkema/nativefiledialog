@@ -4,6 +4,8 @@
   http://www.frogtoss.com/labs
 */
 
+#ifdef _LINUX
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -305,3 +307,5 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
 
     return result;
 }
+
+#endif

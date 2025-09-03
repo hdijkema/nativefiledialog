@@ -24,36 +24,66 @@ typedef struct {
     nfdchar_t *buf;
     size_t *indices; /* byte offsets into buf */
     size_t count;    /* number of indices into buf */
-}nfdpathset_t;
+} nfdpathset_t;
 
 typedef enum {
     NFD_ERROR,       /* programmatic error */
     NFD_OKAY,        /* user pressed okay, or successful return */
     NFD_CANCEL       /* user pressed cancel */
-}nfdresult_t;
-    
+} nfdresult_t;
+
+
+typedef void *nfd_parent_window_data_ptr_t;
 
 /* nfd_<targetplatform>.c */
 
 /* single file open dialog */    
 nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath );
+                            nfdchar_t **outPath
+                           );
+
+nfdresult_t NFD_OpenDialogWithParent(const nfdchar_t *dialogtitle,
+                                     const nfdchar_t *filterlist,
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent);
 
 /* multiple file open dialog */    
 nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
                                     const nfdchar_t *defaultPath,
                                     nfdpathset_t *outPaths );
 
+nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
+                                              const nfdchar_t *filterList,
+                                              const nfdchar_t *defaultPath,
+                                              nfdpathset_t *outPaths,
+                                              nfd_parent_window_data_ptr_t parent
+                                             );
+
 /* save dialog */
 nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath );
 
+nfdresult_t NFD_SaveDialogWithParent(const nfdchar_t *dialogtitle,
+                                     const nfdchar_t *filterlist,
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent
+                                     );
 
 /* select folder dialog */
 nfdresult_t NFD_PickFolder( const nfdchar_t *defaultPath,
                             nfdchar_t **outPath);
+
+nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent
+                                     );
+
+
 
 /* nfd_common.c */
 

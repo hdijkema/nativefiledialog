@@ -4,6 +4,7 @@
   http://www.frogtoss.com/labs
  */
 
+#ifdef _WINDOWS
 
 #ifdef __MINGW32__
 // Explicitly setting NTDDI version, this is necessary for the MinGW compiler
@@ -384,13 +385,27 @@ static nfdresult_t SetDefaultPath( IFileDialog *dialog, const char *defaultPath 
 /* public */
 
 
+
 nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
 {
+    return NFD_OpenDialogWithParent(NULL, filterList, defaultPath, outPath, NULL);
+}
+
+nfdresult_t NFD_OpenDialogWithParent( const nfdchar_t *dialogtitle,
+                                      const nfdchar_t *filterList,
+                                      const nfdchar_t *defaultPath,
+                                      nfdchar_t **outPath,
+                                      nfd_parent_window_data_ptr_t parent)
+{
     nfdresult_t nfdResult = NFD_ERROR;
 
-    
+    HWND parent_hwnd = NULL;
+    if (parent != NULL) {
+        parent_hwnd = static_cast<HWND>(parent);
+    }
+
     HRESULT coResult = COMInit();
     if (!COMIsInitialized(coResult))
     {        
@@ -420,10 +435,18 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
     if ( !SetDefaultPath( fileOpenDialog, defaultPath ) )
     {
         goto end;
-    }    
+    }
+
+    // Set dialog title.
+    if (dialogtitle != NULL) {
+        wchar_t *wintitle = NULL;
+        CopyNFDCharToWChar(dialogtitle, &wintitle);
+        fileOpenDialog->SetTitle(wintitle);
+        NFDi_Free(wintitle);
+    }
 
     // Show the dialog.
-    result = fileOpenDialog->Show(NULL);
+    result = fileOpenDialog->Show(parent_hwnd);
     if ( SUCCEEDED(result) )
     {
         // Get the file name
@@ -478,8 +501,22 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
                                     const nfdchar_t *defaultPath,
                                     nfdpathset_t *outPaths )
 {
+    return NFD_OpenDialogMultipleWithParent(NULL, filterList, defaultPath, outPaths, NULL);
+}
+
+nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
+                                              const nfdchar_t *filterList,
+                                              const nfdchar_t *defaultPath,
+                                              nfdpathset_t *outPaths,
+                                              nfd_parent_window_data_ptr_t parent
+                                             )
+{
     nfdresult_t nfdResult = NFD_ERROR;
 
+    HWND parent_hwnd = NULL;
+    if (parent != NULL) {
+        parent_hwnd = static_cast<HWND>(parent);
+    }
 
     HRESULT coResult = COMInit();
     if (!COMIsInitialized(coResult))
@@ -527,9 +564,17 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
         NFDi_SetError("Could not set options.");
         goto end;
     }
- 
+
+    // Set dialog title.
+    if (dialogtitle != NULL) {
+        wchar_t *wintitle = NULL;
+        CopyNFDCharToWChar(dialogtitle, &wintitle);
+        fileOpenDialog->SetTitle(wintitle);
+        NFDi_Free(wintitle);
+    }
+
     // Show the dialog.
-    result = fileOpenDialog->Show(NULL);
+    result = fileOpenDialog->Show(parent_hwnd);
     if ( SUCCEEDED(result) )
     {
         IShellItemArray *shellItems;
@@ -568,11 +613,28 @@ end:
     return nfdResult;
 }
 
+
 nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
-                            const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath )
+                           const nfdchar_t *defaultPath,
+                           nfdchar_t **outPath )
+{
+    return NFD_SaveDialogWithParent(NULL, filterList, defaultPath, outPath, NULL);
+}
+
+
+nfdresult_t NFD_SaveDialogWithParent( const nfdchar_t *dialogtitle,
+                                      const nfdchar_t *filterList,
+                                      const nfdchar_t *defaultPath,
+                                      nfdchar_t **outPath,
+                                      nfd_parent_window_data_ptr_t parent
+                                     )
 {
     nfdresult_t nfdResult = NFD_ERROR;
+
+    HWND parent_hwnd = NULL;
+    if (parent != NULL) {
+        parent_hwnd = static_cast<HWND>(parent);
+    }
 
     HRESULT coResult = COMInit();
     if (!COMIsInitialized(coResult))
@@ -606,8 +668,16 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
         goto end;
     }
 
+    // Set dialog title.
+    if (dialogtitle != NULL) {
+        wchar_t *wintitle = NULL;
+        CopyNFDCharToWChar(dialogtitle, &wintitle);
+        fileSaveDialog->SetTitle(wintitle);
+        NFDi_Free(wintitle);
+    }
+
     // Show the dialog.
-    result = fileSaveDialog->Show(NULL);
+    result = fileSaveDialog->Show(parent_hwnd);
     if ( SUCCEEDED(result) )
     {
         // Get the file name
@@ -663,8 +733,22 @@ end:
 nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
     nfdchar_t **outPath)
 {
+    return NFD_PickFolderWithParent(NULL, defaultPath, outPath, NULL);
+}
+
+nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent
+                                     )
+{
     nfdresult_t nfdResult = NFD_ERROR;
     DWORD dwOptions = 0;
+
+    HWND parent_hwnd = NULL;
+    if (parent != NULL) {
+        parent_hwnd = static_cast<HWND>(parent);
+    }
 
     HRESULT coResult = COMInit();
     if (!COMIsInitialized(coResult))
@@ -706,8 +790,18 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
         goto end;
     }
 
+
+    // Set dialog title.
+    if (dialogtitle != NULL) {
+        wchar_t *wintitle = NULL;
+        CopyNFDCharToWChar(dialogtitle, &wintitle);
+        fileDialog->SetTitle(wintitle);
+        NFDi_Free(wintitle);
+    }
+
+
     // Show the dialog to the user
-    result = fileDialog->Show(NULL);
+    result = fileDialog->Show(parent_hwnd);
     if ( SUCCEEDED(result) )
     {
         // Get the folder name
@@ -760,3 +854,5 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
 
     return nfdResult;
 }
+
+#endif
