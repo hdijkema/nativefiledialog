@@ -10,6 +10,8 @@
 #ifndef _NFD_COMMON_H
 #define _NFD_COMMON_H
 
+#include <stdlib.h>
+
 #define NFD_MAX_STRLEN 256
 #define _NFD_UNUSED(x) ((void)x) 
 

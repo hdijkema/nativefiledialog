@@ -33,9 +33,21 @@ typedef enum {
 } nfdresult_t;
 
 
+#ifdef _WINDOWS
 typedef void *nfd_parent_window_data_ptr_t;
+#endif
+#ifdef __linux
+#include <gtk/gtk.h>
+typedef GtkWindow *nfd_parent_window_data_ptr_t;
+#endif
 
 /* nfd_<targetplatform>.c */
+
+
+void NFD_SetTexts(const nfdchar_t *cancel,
+                  const nfdchar_t *doOpen,
+                  const nfdchar_t *doSave,
+                  const nfdchar_t *doSelect);
 
 /* single file open dialog */    
 nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,

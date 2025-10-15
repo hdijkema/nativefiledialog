@@ -4,7 +4,7 @@
   http://www.frogtoss.com/labs
 */
 
-#ifdef _LINUX
+#ifdef __linux
 
 #include <stdio.h>
 #include <assert.h>
@@ -15,6 +15,9 @@
 
 
 const char INIT_FAIL_MSG[] = "gtk_init_check failed to initilaize GTK+";
+
+
+
 
 
 static void AddTypeToFilterName( const char *typebuf, char *filterName, size_t bufsize )
@@ -170,6 +173,16 @@ static void WaitForCleanup(void)
 nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
+{
+    return NFD_OpenDialogWithParent("Open File", filterList, defaultPath, outPath, NULL);
+}
+
+
+nfdresult_t NFD_OpenDialogWithParent(const nfdchar_t *dialogtitle,
+                                    const nfdchar_t *filterList,
+                                    const nfdchar_t *defaultPath,
+                                    nfdchar_t **outPath,
+                                    nfd_parent_window_data_ptr_t parent)
 {    
     GtkWidget *dialog;
     nfdresult_t result;
@@ -180,11 +193,11 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
         return NFD_ERROR;
     }
 
-    dialog = gtk_file_chooser_dialog_new( "Open File",
-                                          NULL,
+    dialog = gtk_file_chooser_dialog_new( dialogtitle,
+                                          parent,
                                           GTK_FILE_CHOOSER_ACTION_OPEN,
-                                          "_Cancel", GTK_RESPONSE_CANCEL,
-                                          "_Open", GTK_RESPONSE_ACCEPT,
+                                         txtCancel(), GTK_RESPONSE_CANCEL,
+                                         txtDoOpen(), GTK_RESPONSE_ACCEPT,
                                           NULL );
 
     /* Build the filter list */
@@ -228,6 +241,16 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
                                     const nfdchar_t *defaultPath,
                                     nfdpathset_t *outPaths )
 {
+    return NFD_OpenDialogMultipleWithParent("Open Files", filterList, defaultPath, outPaths, NULL);
+}
+
+nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
+                                              const nfdchar_t *filterList,
+                                              const nfdchar_t *defaultPath,
+                                              nfdpathset_t *outPaths,
+                                              nfd_parent_window_data_ptr_t parent
+                                            )
+{
     GtkWidget *dialog;
     nfdresult_t result;
 
@@ -237,11 +260,11 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
         return NFD_ERROR;
     }
 
-    dialog = gtk_file_chooser_dialog_new( "Open Files",
-                                          NULL,
+    dialog = gtk_file_chooser_dialog_new( dialogtitle,
+                                          parent,
                                           GTK_FILE_CHOOSER_ACTION_OPEN,
-                                          "_Cancel", GTK_RESPONSE_CANCEL,
-                                          "_Open", GTK_RESPONSE_ACCEPT,
+                                         txtCancel(), GTK_RESPONSE_CANCEL,
+                                         txtDoOpen(), GTK_RESPONSE_ACCEPT,
                                           NULL );
     gtk_file_chooser_set_select_multiple( GTK_FILE_CHOOSER(dialog), TRUE );
 
@@ -275,6 +298,16 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
 {
+    return NFD_SaveDialogWithParent("Save File", filterList, defaultPath, outPath, NULL);
+}
+
+nfdresult_t NFD_SaveDialogWithParent(const nfdchar_t *dialogtitle,
+                                     const nfdchar_t *filterList,
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent
+                                     )
+{
     GtkWidget *dialog;
     nfdresult_t result;
 
@@ -284,11 +317,11 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
         return NFD_ERROR;
     }
 
-    dialog = gtk_file_chooser_dialog_new( "Save File",
-                                          NULL,
+    dialog = gtk_file_chooser_dialog_new( dialogtitle,
+                                          parent,
                                           GTK_FILE_CHOOSER_ACTION_SAVE,
-                                          "_Cancel", GTK_RESPONSE_CANCEL,
-                                          "_Save", GTK_RESPONSE_ACCEPT,
+                                         txtCancel(), GTK_RESPONSE_CANCEL,
+                                         txtDoSave(), GTK_RESPONSE_ACCEPT,
                                           NULL ); 
     gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER(dialog), TRUE );
 
@@ -330,6 +363,16 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
 nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
     nfdchar_t **outPath)
 {
+    return NFD_PickFolderWithParent("Select folder", defaultPath, outPath, NULL);
+}
+
+
+nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
+                                    const nfdchar_t *defaultPath,
+                                    nfdchar_t **outPath,
+                                    nfd_parent_window_data_ptr_t parent
+                                    )
+{
     GtkWidget *dialog;
     nfdresult_t result;
 
@@ -339,11 +382,11 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
         return NFD_ERROR;
     }
 
-    dialog = gtk_file_chooser_dialog_new( "Select folder",
-                                          NULL,
+    dialog = gtk_file_chooser_dialog_new( dialogtitle,
+                                          parent,
                                           GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                          "_Cancel", GTK_RESPONSE_CANCEL,
-                                          "_Select", GTK_RESPONSE_ACCEPT,
+                                         txtCancel(), GTK_RESPONSE_CANCEL,
+                                         txtDoSelect(), GTK_RESPONSE_ACCEPT,
                                           NULL ); 
     gtk_file_chooser_set_do_overwrite_confirmation( GTK_FILE_CHOOSER(dialog), TRUE );
 

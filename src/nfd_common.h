@@ -30,6 +30,11 @@ void   NFDi_SetError( const char *msg );
 int    NFDi_SafeStrncpy( char *dst, const char *src, size_t maxCopy );
 int32_t NFDi_UTF8_Strlen( const nfdchar_t *str );
 int    NFDi_IsFilterSegmentChar( char ch );
+
+const char *txtCancel();
+const char *txtDoOpen();
+const char *txtDoSave();
+const char *txtDoSelect();
     
 #ifdef __cplusplus
 }

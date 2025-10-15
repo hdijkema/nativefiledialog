@@ -140,3 +140,41 @@ int NFDi_IsFilterSegmentChar( char ch )
     return (ch==','||ch==';'||ch=='\0');
 }
 
+/* standard texts */
+
+static const char *do_cancel = "_Cancel";
+static const char *do_open   = "_Open";
+static const char *do_save   = "_Save";
+static const char *do_select = "_Select";
+
+void NFD_SetTexts(const nfdchar_t *cancel,
+                  const nfdchar_t *doOpen,
+                  const nfdchar_t *doSave,
+                  const nfdchar_t *doSelect)
+{
+    do_cancel = (cancel == NULL) ? do_cancel : cancel;
+    do_open = (doOpen == NULL) ? do_open : doOpen;
+    do_save = (doSave == NULL) ? do_save : doSave;
+    do_select = (doSelect == NULL) ? do_select : doSelect;
+}
+
+const char *txtCancel()
+{
+    return do_cancel;
+}
+
+const char *txtDoOpen()
+{
+    return do_open;
+}
+
+const char *txtDoSave()
+{
+    return do_save;
+}
+
+const char *txtDoSelect()
+{
+    return do_select;
+}
+
