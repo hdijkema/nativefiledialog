@@ -29,8 +29,15 @@ typedef struct {
 typedef enum {
     NFD_ERROR,       /* programmatic error */
     NFD_OKAY,        /* user pressed okay, or successful return */
-    NFD_CANCEL       /* user pressed cancel */
+    NFD_CANCEL,      /* user pressed cancel */
+    NFD_RUNS_ASYNC   /* works asynchronous, callback will cleanup things */
 } nfdresult_t;
+
+/**
+ * callback will be called with the result (ERROR, OKAY or CANCEL) and an allocated output out or NULL.
+ * The allocated output must be freed by the callback function.
+ */
+typedef void (*nfd_async_callback) (nfdresult_t result, const char *out, void *user_data);
 
 
 #ifdef _WINDOWS
@@ -59,7 +66,10 @@ nfdresult_t NFD_OpenDialogWithParent(const nfdchar_t *dialogtitle,
                                      const nfdchar_t *filterlist,
                                      const nfdchar_t *defaultPath,
                                      nfdchar_t **outPath,
-                                     nfd_parent_window_data_ptr_t parent);
+                                     nfd_parent_window_data_ptr_t parent,
+                                     nfd_async_callback cb,
+                                     void *user_data
+                                     );
 
 /* multiple file open dialog */    
 nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
@@ -70,7 +80,9 @@ nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
                                               const nfdchar_t *filterList,
                                               const nfdchar_t *defaultPath,
                                               nfdpathset_t *outPaths,
-                                              nfd_parent_window_data_ptr_t parent
+                                              nfd_parent_window_data_ptr_t parent,
+                                              nfd_async_callback cb,
+                                             void *user_data
                                              );
 
 /* save dialog */
@@ -82,7 +94,9 @@ nfdresult_t NFD_SaveDialogWithParent(const nfdchar_t *dialogtitle,
                                      const nfdchar_t *filterlist,
                                      const nfdchar_t *defaultPath,
                                      nfdchar_t **outPath,
-                                     nfd_parent_window_data_ptr_t parent
+                                     nfd_parent_window_data_ptr_t parent,
+                                     nfd_async_callback cb,
+                                     void *user_data
                                      );
 
 /* select folder dialog */
@@ -92,7 +106,9 @@ nfdresult_t NFD_PickFolder( const nfdchar_t *defaultPath,
 nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
                                      const nfdchar_t *defaultPath,
                                      nfdchar_t **outPath,
-                                     nfd_parent_window_data_ptr_t parent
+                                     nfd_parent_window_data_ptr_t parent,
+                                     nfd_async_callback cb,
+                                     void *user_data
                                      );
 
 

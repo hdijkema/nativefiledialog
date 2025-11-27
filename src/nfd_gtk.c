@@ -16,8 +16,101 @@
 
 const char INIT_FAIL_MSG[] = "gtk_init_check failed to initilaize GTK+";
 
+typedef struct {
+    nfd_async_callback cb;
+    void *user_data;
+} cb_data_t;
 
+static void response_list_cb(GtkDialog *dlg, gint response_id, gpointer user_data)
+{
+    cb_data_t *dt = (cb_data_t *) user_data;
+    nfd_async_callback cb = dt->cb;
+    void *ud = dt->user_data;
+    free(dt);
 
+    if (response_id == GTK_RESPONSE_ACCEPT) {
+        GSList *fileList = gtk_file_chooser_get_filenames( GTK_FILE_CHOOSER(dlg) );
+
+        GSList *node = fileList;
+        int total_len = 0;
+        int total_nodes = 0;
+        while(node != NULL) {
+            const char *fn = (const char *) node->data;
+            total_len += strlen(fn);
+            total_nodes += 1;
+            node = node->next;
+        }
+
+        int comma_alloc = total_nodes * 1;
+        int nil_alloc = 1;
+
+        int alloc = comma_alloc + nil_alloc + total_len;
+        char *files = (char *) NFDi_Malloc(alloc);
+        if (files == NULL) {
+            memset(files, '\0', alloc);
+            node = fileList;
+            while(node != NULL) {
+                const char *fn = (const char *) node->data;
+                g_free(node->data);
+                strcat(files, fn);
+                node = node->next;
+            }
+            g_slist_free(fileList);
+            gtk_widget_destroy(GTK_WIDGET(dlg));
+            cb(NFD_OKAY, files, ud);
+        } else {
+            node = fileList;
+            while(node != NULL) {
+                const char *fn = (const char *) node->data;
+                node = node->next;
+            }
+            g_slist_free(fileList);
+            gtk_widget_destroy(GTK_WIDGET(dlg));
+            cb(NFD_ERROR, NULL, ud);
+        }
+    } else {
+        gtk_widget_destroy(GTK_WIDGET(dlg));
+        cb(NFD_CANCEL, NULL, ud);
+    }
+}
+
+static void response_cb(GtkDialog *dlg, gint response_id, gpointer user_data)
+{
+    cb_data_t *dt = (cb_data_t *) user_data;
+    nfd_async_callback cb = dt->cb;
+    void *ud = dt->user_data;
+    free(dt);
+
+    if (response_id == GTK_RESPONSE_ACCEPT) {
+        char *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dlg));
+        size_t len = strlen(filename);
+        char *r = NFDi_Malloc(len + 1);
+        if (r != NULL) {
+            memcpy(r, filename, len + 1);
+            g_free(filename);
+            gtk_widget_destroy(GTK_WIDGET(dlg));
+            cb(NFD_OKAY, r, ud);
+        } else {
+            g_free(filename);
+            gtk_widget_destroy(GTK_WIDGET(dlg));
+            cb(NFD_ERROR, NULL, ud);
+        }
+    } else {
+        gtk_widget_destroy(GTK_WIDGET(dlg));
+        cb(NFD_CANCEL, NULL, ud);
+    }
+}
+
+static void close_cb(GtkDialog *dlg, gpointer user_data)
+{
+    cb_data_t *dt = (cb_data_t *) user_data;
+    nfd_async_callback cb = dt->cb;
+    void *ud = dt->user_data;
+    free(dt);
+
+    gtk_widget_destroy(GTK_WIDGET(dlg));
+    cb(NFD_CANCEL, NULL, ud);
+}
 
 
 static void AddTypeToFilterName( const char *typebuf, char *filterName, size_t bufsize )
@@ -174,7 +267,7 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
 {
-    return NFD_OpenDialogWithParent("Open File", filterList, defaultPath, outPath, NULL);
+    return NFD_OpenDialogWithParent("Open File", filterList, defaultPath, outPath, NULL, NULL, NULL);
 }
 
 
@@ -182,7 +275,10 @@ nfdresult_t NFD_OpenDialogWithParent(const nfdchar_t *dialogtitle,
                                     const nfdchar_t *filterList,
                                     const nfdchar_t *defaultPath,
                                     nfdchar_t **outPath,
-                                    nfd_parent_window_data_ptr_t parent)
+                                    nfd_parent_window_data_ptr_t parent,
+                                    nfd_async_callback cb,
+                                    void *user_data
+                                    )
 {    
     GtkWidget *dialog;
     nfdresult_t result;
@@ -206,34 +302,48 @@ nfdresult_t NFD_OpenDialogWithParent(const nfdchar_t *dialogtitle,
     /* Set the default path */
     SetDefaultPath(dialog, defaultPath);
 
-    result = NFD_CANCEL;
-    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
-    {
-        char *filename;
-
-        filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-
+    if (cb == NULL) {
+        result = NFD_CANCEL;
+        if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
         {
-            size_t len = strlen(filename);
-            *outPath = NFDi_Malloc( len + 1 );
-            memcpy( *outPath, filename, len + 1 );
-            if ( !*outPath )
+            char *filename;
+
+            filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+
             {
-                g_free( filename );
-                gtk_widget_destroy(dialog);
-                return NFD_ERROR;
+                size_t len = strlen(filename);
+                *outPath = NFDi_Malloc( len + 1 );
+                memcpy( *outPath, filename, len + 1 );
+                if ( !*outPath )
+                {
+                    g_free( filename );
+                    gtk_widget_destroy(dialog);
+                    return NFD_ERROR;
+                }
             }
+            g_free( filename );
+
+            result = NFD_OKAY;
         }
-        g_free( filename );
 
-        result = NFD_OKAY;
+        WaitForCleanup();
+        gtk_widget_destroy(dialog);
+        WaitForCleanup();
+
+        return result;
+    } else {
+        cb_data_t *dt = (cb_data_t *) malloc(sizeof(cb_data_t));
+        if (dt == NULL) {
+            return NFD_ERROR;
+        } else {
+            dt->cb = cb;
+            dt->user_data = user_data;
+            g_signal_connect(dialog, "response", G_CALLBACK(response_cb), dt);
+            g_signal_connect(dialog, "close", G_CALLBACK(close_cb), dt);
+            gtk_widget_show_all(dialog);
+            return NFD_RUNS_ASYNC;
+        }
     }
-
-    WaitForCleanup();
-    gtk_widget_destroy(dialog);
-    WaitForCleanup();
-
-    return result;
 }
 
 
@@ -241,14 +351,16 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
                                     const nfdchar_t *defaultPath,
                                     nfdpathset_t *outPaths )
 {
-    return NFD_OpenDialogMultipleWithParent("Open Files", filterList, defaultPath, outPaths, NULL);
+    return NFD_OpenDialogMultipleWithParent("Open Files", filterList, defaultPath, outPaths, NULL, NULL, NULL);
 }
 
 nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
                                               const nfdchar_t *filterList,
                                               const nfdchar_t *defaultPath,
                                               nfdpathset_t *outPaths,
-                                              nfd_parent_window_data_ptr_t parent
+                                              nfd_parent_window_data_ptr_t parent,
+                                              nfd_async_callback cb,
+                                              void *user_data
                                             )
 {
     GtkWidget *dialog;
@@ -265,7 +377,7 @@ nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
                                           GTK_FILE_CHOOSER_ACTION_OPEN,
                                          txtCancel(), GTK_RESPONSE_CANCEL,
                                          txtDoOpen(), GTK_RESPONSE_ACCEPT,
-                                          NULL );
+                                         NULL );
     gtk_file_chooser_set_select_multiple( GTK_FILE_CHOOSER(dialog), TRUE );
 
     /* Build the filter list */
@@ -274,38 +386,54 @@ nfdresult_t NFD_OpenDialogMultipleWithParent( const nfdchar_t *dialogtitle,
     /* Set the default path */
     SetDefaultPath(dialog, defaultPath);
 
-    result = NFD_CANCEL;
-    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
-    {
-        GSList *fileList = gtk_file_chooser_get_filenames( GTK_FILE_CHOOSER(dialog) );
-        if ( AllocPathSet( fileList, outPaths ) == NFD_ERROR )
+    if (cb == NULL) {
+        result = NFD_CANCEL;
+        if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
         {
-            gtk_widget_destroy(dialog);
-            return NFD_ERROR;
+            GSList *fileList = gtk_file_chooser_get_filenames( GTK_FILE_CHOOSER(dialog) );
+            if ( AllocPathSet( fileList, outPaths ) == NFD_ERROR )
+            {
+                gtk_widget_destroy(dialog);
+                return NFD_ERROR;
+            }
+
+            result = NFD_OKAY;
         }
-        
-        result = NFD_OKAY;
+
+        WaitForCleanup();
+        gtk_widget_destroy(dialog);
+        WaitForCleanup();
+
+        return result;
+    } else {
+        cb_data_t *dt = (cb_data_t *) malloc(sizeof(cb_data_t));
+        if (dt == NULL) {
+            return NFD_ERROR;
+        } else {
+            dt->cb = cb;
+            dt->user_data = user_data;
+            g_signal_connect(dialog, "response", G_CALLBACK(response_list_cb), dt);
+            g_signal_connect(dialog, "close", G_CALLBACK(close_cb), dt);
+            gtk_widget_show_all(dialog);
+            return NFD_RUNS_ASYNC;
+        }
     }
-
-    WaitForCleanup();
-    gtk_widget_destroy(dialog);
-    WaitForCleanup();
-
-    return result;
 }
 
 nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
                             const nfdchar_t *defaultPath,
                             nfdchar_t **outPath )
 {
-    return NFD_SaveDialogWithParent("Save File", filterList, defaultPath, outPath, NULL);
+    return NFD_SaveDialogWithParent("Save File", filterList, defaultPath, outPath, NULL, NULL, NULL);
 }
 
 nfdresult_t NFD_SaveDialogWithParent(const nfdchar_t *dialogtitle,
                                      const nfdchar_t *filterList,
                                      const nfdchar_t *defaultPath,
                                      nfdchar_t **outPath,
-                                     nfd_parent_window_data_ptr_t parent
+                                     nfd_parent_window_data_ptr_t parent,
+                                     nfd_async_callback cb,
+                                     void *user_data
                                      )
 {
     GtkWidget *dialog;
@@ -331,47 +459,64 @@ nfdresult_t NFD_SaveDialogWithParent(const nfdchar_t *dialogtitle,
     /* Set the default path */
     SetDefaultPath(dialog, defaultPath);
     
-    result = NFD_CANCEL;    
-    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
-    {
-        char *filename;
-        filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        
+    if (cb == NULL) {
+        result = NFD_CANCEL;
+        if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
         {
-            size_t len = strlen(filename);
-            *outPath = NFDi_Malloc( len + 1 );
-            memcpy( *outPath, filename, len + 1 );
-            if ( !*outPath )
+            char *filename;
+            filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+
             {
-                g_free( filename );
-                gtk_widget_destroy(dialog);
-                return NFD_ERROR;
+                size_t len = strlen(filename);
+                *outPath = NFDi_Malloc( len + 1 );
+                memcpy( *outPath, filename, len + 1 );
+                if ( !*outPath )
+                {
+                    g_free( filename );
+                    gtk_widget_destroy(dialog);
+                    return NFD_ERROR;
+                }
             }
+            g_free(filename);
+
+            result = NFD_OKAY;
         }
-        g_free(filename);
 
-        result = NFD_OKAY;
+        WaitForCleanup();
+        gtk_widget_destroy(dialog);
+        WaitForCleanup();
+
+        return result;
+    } else {
+        cb_data_t *dt = (cb_data_t *) malloc(sizeof(cb_data_t));
+        if (dt == NULL) {
+            return NFD_ERROR;
+        } else {
+            dt->cb = cb;
+            dt->user_data = user_data;
+            g_signal_connect(dialog, "response", G_CALLBACK(response_cb), dt);
+            g_signal_connect(dialog, "close", G_CALLBACK(close_cb), dt);
+            gtk_widget_show_all(dialog);
+            return NFD_RUNS_ASYNC;
+        }
     }
-
-    WaitForCleanup();
-    gtk_widget_destroy(dialog);
-    WaitForCleanup();
-    
-    return result;
 }
 
 nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
     nfdchar_t **outPath)
 {
-    return NFD_PickFolderWithParent("Select folder", defaultPath, outPath, NULL);
+    return NFD_PickFolderWithParent("Select folder", defaultPath, outPath, NULL, NULL, NULL);
 }
 
 
+
 nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
-                                    const nfdchar_t *defaultPath,
-                                    nfdchar_t **outPath,
-                                    nfd_parent_window_data_ptr_t parent
-                                    )
+                                     const nfdchar_t *defaultPath,
+                                     nfdchar_t **outPath,
+                                     nfd_parent_window_data_ptr_t parent,
+                                     nfd_async_callback cb,
+                                     void *user_data
+                                     )
 {
     GtkWidget *dialog;
     nfdresult_t result;
@@ -394,33 +539,47 @@ nfdresult_t NFD_PickFolderWithParent(const nfdchar_t *dialogtitle,
     /* Set the default path */
     SetDefaultPath(dialog, defaultPath);
     
-    result = NFD_CANCEL;    
-    if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
-    {
-        char *filename;
-        filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
-        
+    if (cb == NULL) {
+        result = NFD_CANCEL;
+        if ( gtk_dialog_run( GTK_DIALOG(dialog) ) == GTK_RESPONSE_ACCEPT )
         {
-            size_t len = strlen(filename);
-            *outPath = NFDi_Malloc( len + 1 );
-            memcpy( *outPath, filename, len + 1 );
-            if ( !*outPath )
+            char *filename;
+            filename = gtk_file_chooser_get_filename( GTK_FILE_CHOOSER(dialog) );
+
             {
-                g_free( filename );
-                gtk_widget_destroy(dialog);
-                return NFD_ERROR;
+                size_t len = strlen(filename);
+                *outPath = NFDi_Malloc( len + 1 );
+                memcpy( *outPath, filename, len + 1 );
+                if ( !*outPath )
+                {
+                    g_free( filename );
+                    gtk_widget_destroy(dialog);
+                    return NFD_ERROR;
+                }
             }
+            g_free(filename);
+
+            result = NFD_OKAY;
         }
-        g_free(filename);
 
-        result = NFD_OKAY;
+        WaitForCleanup();
+        gtk_widget_destroy(dialog);
+        WaitForCleanup();
+
+        return result;
+    } else {
+        cb_data_t *dt = (cb_data_t *) malloc(sizeof(cb_data_t));
+        if (dt == NULL) {
+            return NFD_ERROR;
+        } else {
+            dt->cb = cb;
+            dt->user_data = user_data;
+            g_signal_connect(dialog, "response", G_CALLBACK(response_cb), dt);
+            g_signal_connect(dialog, "close", G_CALLBACK(close_cb), dt);
+            gtk_widget_show_all(dialog);
+            return NFD_RUNS_ASYNC;
+        }
     }
-
-    WaitForCleanup();
-    gtk_widget_destroy(dialog);
-    WaitForCleanup();
-    
-    return result;
 }
 
 #endif
